@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demo PRISMA Hybrid Margin</title>
+    <link rel="stylesheet" href="./styles.css?v=20260529-11" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Thesis - hybrid ML margin pricing</p>
+        <h1>Local PRISMA proxy, ML calibration and portfolio validation</h1>
+      </div>
+      <nav class="nav" aria-label="Sections">
+        <a href="#pipeline">Pipeline</a>
+        <a href="#calibration">Calibration</a>
+        <a href="#dataset">Dataset</a>
+        <a href="#demo">Demo</a>
+        <a href="#results">Results</a>
+        <a href="#commands">Commands</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="pipeline" class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">What the code does</p>
+            <h2>Calculation pipeline</h2>
+          </div>
+        </div>
+        <div class="pipeline">
+          <div class="stage">
+            <span>1</span>
+            <h3>Market data</h3>
+            <p><code>im_data_pipeline.py</code> loads spots, historical returns, LSEG surfaces and proxy volatility inputs.</p>
+          </div>
+          <div class="stage">
+            <span>2</span>
+            <h3>Physical proxy</h3>
+            <p><code>im_prisma_proxy.py</code> reprices futures/options under scenarios and computes a local initial margin.</p>
+          </div>
+          <div class="stage">
+            <span>3</span>
+            <h3>ML calibration</h3>
+            <p><code>train_calibration_model.py</code> learns the correction between the local proxy and official PRISMA margins.</p>
+          </div>
+          <div class="stage">
+            <span>4</span>
+            <h3>Portfolio engine</h3>
+            <p><code>im_margin_engine.py</code> aggregates legs, applies the ML factor and handles portfolio netting.</p>
+          </div>
+          <div class="stage">
+            <span>5</span>
+            <h3>Validation</h3>
+            <p><code>validation_multidate_suite.py</code> replays portfolios and compares hybrid margins with PRISMA API labels.</p>
+          </div>
+        </div>
+
+        <div class="pipeline-example">
+          <div class="example-head">
+            <div class="example-title-block">
+              <p class="eyebrow">Worked example</p>
+              <h3 id="worked-title">P029 - Directional future, 2023-05-19</h3>
+              <div id="worked-example-tabs" class="example-tabs" aria-label="Worked example selector">
+                <button type="button" data-example="future" class="active">Future example</button>
+                <button type="button" data-example="options">Option portfolio</button>
+              </div>
+            </div>
+            <strong id="worked-badge">-3x FSTX 2023-06-16</strong>
+          </div>
+
+          <div class="example-steps">
+            <div>
+              <span>1</span>
+              <h4>Retrieve the traded product</h4>
+              <p id="worked-step1">
+                The API gives the listed instrument, maturity and net long/short balance.
+                Here the position is a short STOXX Europe 600 future in liquidation group
+                <code>ETD-INDEX</code>.
+              </p>
+            </div>
+
+            <div>
+              <span>2</span>
+              <h4>Compute the local proxy margin</h4>
+              <p id="worked-proxy-intro">
+                Historical returns are volatility-filtered, converted into MPOR spot scenarios,
+                then the future is repriced in every scenario.
+              </p>
+              <pre><code id="worked-proxy-formula">r* = r × clip(current_EWMA_vol / long_run_vol, 0.5, 2.0)
+S_s = S0 × exp(sum(r*) over MPOR)
+F_s = S_s × exp((r - q) × T)
+V_s = quantity × multiplier × F_s
+loss_s = -(V_s - V0)
+proxy_IM = max(Q99(loss), Q99.9(loss), 0.1% × notional, add-ons)</code></pre>
+              <p id="worked-proxy-applied" class="applied">Applied to P029: <strong>proxy margin = 5,617.76 €</strong>.</p>
+              <p id="worked-proxy-note" class="micro-note">
+                For options, the scenario repricing step uses Black-Scholes/Black-76 with the
+                LSEG volatility surface: <code>option_value_s = BS(S_s, K, T, r, q, σ(K,T))</code>.
+              </p>
+            </div>
+
+            <div>
+              <span>3</span>
+              <h4>Apply the ML calibration factor</h4>
+              <p>
+                The model learns a log correction between the local proxy and official PRISMA
+                unit margins.
+              </p>
+              <pre><code>target = log(API_margin / local_proxy_margin)
+predicted_factor = exp(model(features))
+hybrid_standalone = proxy_margin × guarded(predicted_factor)</code></pre>
+              <p id="worked-ml-applied" class="applied">
+                P029 factor: <strong>1.2995</strong>, so
+                <strong>5,617.76 € × 1.2995 = 7,300.20 €</strong>.
+              </p>
+            </div>
+
+            <div>
+              <span>4</span>
+              <h4>Aggregate at portfolio level</h4>
+              <p>
+                The engine recomputes the portfolio under the same scenario grid, so opposite
+                positions can offset through scenario P&amp;L. The retained hybrid margin then
+                applies the robust ML factor to this netted portfolio proxy.
+              </p>
+              <pre><code>netting_factor = portfolio_proxy / sum(standalone_proxy)
+robust_portfolio_factor = guarded weighted average of ML factors
+final_hybrid = portfolio_proxy × robust_portfolio_factor</code></pre>
+              <p>
+                The <code>netting_factor</code> measures how much risk remains after the
+                positions are valued together instead of standalone. The robust factor is the
+                final ML multiplier for the portfolio: it averages the leg-level ML corrections,
+                weighted by their risk contribution, and caps unstable predictions so the final
+                margin stays economically reasonable.
+              </p>
+              <p id="worked-portfolio-applied" class="applied">
+                P029 has one leg, so <strong>netting factor = 1.0000</strong> and
+                the retained robust factor is <strong>1.2995</strong>. The
+                <strong>final robust hybrid = 7,300.20 €</strong>.
+              </p>
+            </div>
+
+            <div>
+              <span>5</span>
+              <h4>Compare with PRISMA</h4>
+              <div class="comparison-strip">
+                <div><span>Local proxy</span><strong id="worked-compare-proxy">5,617.76 €</strong></div>
+                <div><span>Hybrid ML</span><strong id="worked-compare-hybrid">7,300.20 €</strong></div>
+                <div><span>PRISMA API</span><strong id="worked-compare-api">6,442.84 €</strong></div>
+                <div><span>Abs. error</span><strong id="worked-compare-error">13.31%</strong></div>
+              </div>
+              <p id="worked-compare-note">
+                This example is intentionally directional: it isolates the proxy and calibration
+                mechanics. Multi-leg portfolios use the same formulas, but netting can materially
+                reduce the portfolio proxy before the final ML factor is applied.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="calibration" class="calibration-grid">
+        <div class="panel calibration-main">
+          <p class="eyebrow">Calibration layer</p>
+          <h2>Model and target</h2>
+          <p>
+            The retained calibration model is a scikit-learn
+            <code>HistGradientBoostingRegressor</code>. XGBoost support remains in the engine only as a
+            backward-compatibility fallback for older model artefacts.
+          </p>
+          <div class="formula">
+            <span>Training target</span>
+            <strong>log(API margin / local proxy margin)</strong>
+          </div>
+          <p>
+            At inference, the model predicts a log correction. The hybrid unit margin is then:
+            <code>local_margin_scaled × exp(predicted_log_ratio)</code>.
+          </p>
+        </div>
+
+        <div class="panel calibration-facts">
+          <p class="eyebrow">LSEG10 training report</p>
+          <h2>Model facts</h2>
+          <div class="fact-grid">
+            <div><span>Training rows</span><strong>242,485</strong></div>
+            <div><span>Test rows</span><strong>31,668</strong></div>
+            <div><span>Features</span><strong>29</strong></div>
+            <div><span>Optuna trials</span><strong>55</strong></div>
+            <div><span>Test R²</span><strong>0.790</strong></div>
+            <div><span>Median unit error</span><strong>10.04%</strong></div>
+          </div>
+        </div>
+
+        <div class="panel feature-panel">
+          <p class="eyebrow">Inputs</p>
+          <h2>Feature families</h2>
+          <div id="feature-tags" class="feature-tags" aria-label="Feature family selector"></div>
+          <div id="feature-detail" class="feature-detail" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="dataset" class="panel dataset-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">API-harvested universe</p>
+            <h2>Dataset browser</h2>
+          </div>
+        </div>
+
+        <div class="dataset-kpis">
+          <div><span>Rows</span><strong id="dataset-rows">-</strong></div>
+          <div><span>Products</span><strong id="dataset-products">-</strong></div>
+          <div><span>Underlyings</span><strong id="dataset-underlyings">-</strong></div>
+          <div><span>Date range</span><strong id="dataset-dates">-</strong></div>
+        </div>
+
+        <div class="dataset-tools">
+          <label>
+            Search
+            <input id="dataset-search" type="search" placeholder="Product, underlying, asset class" />
+          </label>
+          <label>
+            Asset class
+            <select id="dataset-asset-filter">
+              <option value="">All</option>
+            </select>
+          </label>
+          <label>
+            Instrument
+            <select id="dataset-instrument-filter">
+              <option value="">All</option>
+              <option value="OPT">Options</option>
+              <option value="FUT">Futures</option>
+              <option value="BOTH">Options and futures</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="table-wrap">
+          <table id="dataset-table">
+            <thead>
+              <tr>
+                <th><button type="button" data-sort="product">Product</button></th>
+                <th><button type="button" data-sort="assetClass">Asset class</button></th>
+                <th><button type="button" data-sort="rows">Rows</button></th>
+                <th><button type="button" data-sort="dates">Dates</button></th>
+                <th><button type="button" data-sort="options">Options</button></th>
+                <th><button type="button" data-sort="futures">Futures</button></th>
+                <th><button type="button" data-sort="medianApiMargin">Median API</button></th>
+                <th><button type="button" data-sort="medianApiLocalRatio">Median API/proxy</button></th>
+                <th><button type="button" data-sort="medianVol">Median vol</button></th>
+                <th><button type="button" data-sort="medianTtm">Median TTM</button></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="demo" class="demo-grid">
+        <aside class="brief panel">
+          <p class="eyebrow">Recovered setup</p>
+          <h2>LSEG10, excluding NOVN and MUV2</h2>
+          <p>
+            The demo replays the 45 validated portfolios with LSEG surfaces enabled,
+            the <code>lseg_complete10</code> model, and comparison against archived API margins.
+          </p>
+          <div class="status-list">
+            <div><span>Live API</span><strong>disabled</strong></div>
+            <div><span>API source</span><strong>archive</strong></div>
+            <div><span>Excluded products</span><strong>NOVN, MUV2</strong></div>
+            <div><span>Portfolios</span><strong id="summary-count">45</strong></div>
+          </div>
+        </aside>
+
+        <section class="panel live-panel" aria-labelledby="live-title">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Live replay</p>
+              <h2 id="live-title">Portfolio-by-portfolio validation</h2>
+            </div>
+            <div class="controls" aria-label="Replay controls">
+              <button id="play-btn" class="primary" type="button">Run</button>
+              <button id="pause-btn" type="button">Pause</button>
+              <button id="reset-btn" type="button">Reset</button>
+            </div>
+          </div>
+
+          <div class="progress-shell" aria-label="Progress">
+            <div id="progress-bar" class="progress-bar"></div>
+          </div>
+
+          <div class="portfolio-toolbar">
+            <label for="portfolio-select">Portfolio</label>
+            <select id="portfolio-select"></select>
+            <label for="speed-range">Speed</label>
+            <input id="speed-range" type="range" min="250" max="1800" step="50" value="900" />
+          </div>
+
+          <div class="portfolio-focus">
+            <div>
+              <p class="eyebrow" id="portfolio-date">Date</p>
+              <h3 id="portfolio-name">P001</h3>
+              <p id="portfolio-template" class="template-label">template</p>
+            </div>
+            <p id="portfolio-positions" class="positions"></p>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric">
+              <span>Local proxy</span>
+              <strong id="metric-proxy">-</strong>
+            </div>
+            <div class="metric">
+              <span>Hybrid ML</span>
+              <strong id="metric-hybrid">-</strong>
+            </div>
+            <div class="metric">
+              <span>API PRISMA</span>
+              <strong id="metric-api">-</strong>
+            </div>
+            <div class="metric accent">
+              <span>Absolute error</span>
+              <strong id="metric-error">-</strong>
+            </div>
+          </div>
+
+          <div class="bars" aria-label="Margin comparison">
+            <div class="bar-line">
+              <span>Proxy</span>
+              <div><i id="bar-proxy"></i></div>
+              <b id="bar-proxy-label">-</b>
+            </div>
+            <div class="bar-line">
+              <span>Hybrid</span>
+              <div><i id="bar-hybrid"></i></div>
+              <b id="bar-hybrid-label">-</b>
+            </div>
+            <div class="bar-line api-line">
+              <span>API</span>
+              <div><i id="bar-api"></i></div>
+              <b id="bar-api-label">-</b>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="results" class="results-grid">
+        <div class="panel">
+          <p class="eyebrow">Recovered result</p>
+          <h2>Performance LSEG10</h2>
+          <div class="score-grid">
+            <div><span>MAE</span><strong id="score-mae">-</strong></div>
+            <div><span>Median</span><strong id="score-median">-</strong></div>
+            <div><span>P90</span><strong id="score-p90">-</strong></div>
+            <div><span>Max</span><strong id="score-max">-</strong></div>
+          </div>
+          <p class="note">
+            These results correspond to the archived <code>true_mpor_with_api</code> run,
+            with <code>NOVN</code> and <code>MUV2</code> excluded because their LSEG surfaces were incomplete.
+          </p>
+        </div>
+
+        <div class="panel">
+          <p class="eyebrow">By structure</p>
+          <h2>Average error</h2>
+          <div id="template-chart" class="chart-list"></div>
+        </div>
+      </section>
+
+      <section id="commands" class="panel">
+        <p class="eyebrow">Demo mode</p>
+        <h2>Useful commands</h2>
+        <div class="command-grid">
+          <div>
+            <h3>Replay without live API calls</h3>
+            <pre><code>MPLCONFIGDIR=/private/tmp/mpl-cache conda run -n these python -B validation_multidate_suite.py \
+  --skip-api \
+  --model archive/non_runtime_2026_05_29/experiments/lseg_complete10/calibration_model.pkl \
+  --portfolios-input archive/non_runtime_2026_05_29/experiments/lseg_complete10/portfolios_without_novn_muv2.json</code></pre>
+          </div>
+          <div>
+            <h3>Open the browser demo</h3>
+            <pre><code>open "/Users/antoinesusini/Desktop/Thèse/code/Prisma/demo/index.html"</code></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./demo_data.js?v=20260529-11"></script>
+    <script src="./demo_dataset.js?v=20260529-11"></script>
+    <script src="./app.js?v=20260529-11"></script>
+  </body>
+</html>
