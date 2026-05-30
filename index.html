@@ -126,13 +126,11 @@ hybrid_standalone = proxy_margin × guarded(predicted_factor)</code></pre>
                 positions can offset through scenario P&amp;L. The retained hybrid margin then
                 applies the robust ML factor to this netted portfolio proxy.
               </p>
-              <pre><code>netting_factor = portfolio_proxy / sum(standalone_proxy)
-robust_portfolio_factor = guarded weighted average of ML factors
-final_hybrid = portfolio_proxy × robust_portfolio_factor</code></pre>
+              <pre><code>
+                robust_portfolio_factor = guarded weighted average of ML factors
+                final_hybrid = portfolio_proxy × robust_portfolio_factor</code></pre>
               <p>
-                The <code>netting_factor</code> measures how much risk remains after the
-                positions are valued together instead of standalone. The robust factor is the
-                final ML multiplier for the portfolio: it averages the leg-level ML corrections,
+                The robust factor is the final ML multiplier for the portfolio: it averages the leg-level ML corrections,
                 weighted by their risk contribution, and caps unstable predictions so the final
                 margin stays economically reasonable.
               </p>
