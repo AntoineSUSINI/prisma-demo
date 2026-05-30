@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Demo PRISMA Hybrid Margin</title>
-    <link rel="stylesheet" href="./styles.css?v=20260529-11" />
+    <link rel="stylesheet" href="./styles.css?v=20260531-1" />
   </head>
   <body>
     <header class="topbar">
@@ -126,17 +126,17 @@ hybrid_standalone = proxy_margin × guarded(predicted_factor)</code></pre>
                 positions can offset through scenario P&amp;L. The retained hybrid margin then
                 applies the robust ML factor to this netted portfolio proxy.
               </p>
-              <pre><code>
-robust_portfolio_factor = guarded weighted average of ML factors
+              <pre><code>robust_portfolio_factor = guarded weighted average of ML factors
 final_hybrid = portfolio_proxy × robust_portfolio_factor</code></pre>
               <p>
-                The robust factor is the final ML multiplier for the portfolio: it averages the leg-level ML corrections,
-                weighted by their risk contribution, and caps unstable predictions so the final
-                margin stays economically reasonable.
+                The <code>portfolio_proxy</code> already contains scenario-level netting because
+                positions are valued together before the loss quantile is computed. The robust
+                factor is the final ML multiplier for the portfolio: it averages the leg-level ML
+                corrections, weighted by their risk contribution, and caps unstable predictions so
+                the final margin stays economically reasonable.
               </p>
               <p id="worked-portfolio-applied" class="applied">
-                P029 has one leg, so <strong>netting factor = 1.0000</strong> and
-                the retained robust factor is <strong>1.2995</strong>. The
+                P029 has one leg, so the retained robust factor is <strong>1.2995</strong>. The
                 <strong>final robust hybrid = 7,300.20 €</strong>.
               </p>
             </div>
@@ -388,8 +388,8 @@ final_hybrid = portfolio_proxy × robust_portfolio_factor</code></pre>
       </section>
     </main>
 
-    <script src="./demo_data.js?v=20260529-11"></script>
-    <script src="./demo_dataset.js?v=20260529-11"></script>
-    <script src="./app.js?v=20260529-11"></script>
+    <script src="./demo_data.js?v=20260531-1"></script>
+    <script src="./demo_dataset.js?v=20260531-1"></script>
+    <script src="./app.js?v=20260531-1"></script>
   </body>
 </html>
