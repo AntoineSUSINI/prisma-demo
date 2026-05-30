@@ -53,8 +53,7 @@ proxy_IM = max(Q99(loss), Q99.9(loss), 0.1% × notional, add-ons)`,
       <strong>5,617.76 € × 1.2995 = 7,300.20 €</strong>.
     `,
     portfolioApplied: `
-      P029 has one leg, so <strong>netting factor = 1.0000</strong> and
-      the retained robust factor is <strong>1.2995</strong>. The
+      P029 has one leg, so the retained robust factor is <strong>1.2995</strong>. The
       <strong>final robust hybrid = 7,300.20 €</strong>.
     `,
     compare: {
@@ -99,8 +98,8 @@ proxy_IM = max(Q99(loss), Q99.9(loss), 0.1% × notional, add-ons)`,
       robust factor is <strong>0.9279</strong>, reducing the proxy toward observed PRISMA labels.
     `,
     portfolioApplied: `
-      P024 has two legs, so netting matters: <strong>netting factor = 0.8255</strong>. The
-      retained robust factor is <strong>0.9279</strong>, giving
+      P024 has two option legs, and their scenario P&amp;Ls are already netted inside
+      <code>portfolio_proxy</code>. The retained robust factor is <strong>0.9279</strong>, giving
       <strong>final robust hybrid = 98,386.83 €</strong>.
     `,
     compare: {
