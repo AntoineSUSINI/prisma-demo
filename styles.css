@@ -823,8 +823,7 @@ td .sub {
   font-size: 12px;
 }
 
-.results-grid .panel,
-#commands {
+.results-grid .panel {
   padding: 22px;
 }
 
@@ -867,17 +866,9 @@ td .sub {
   background: var(--blue);
 }
 
-.command-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 18px;
-}
-
 .demo-grid > *,
 .calibration-grid > *,
-.results-grid > *,
-.command-grid > * {
+.results-grid > * {
   min-width: 0;
 }
 
@@ -906,7 +897,6 @@ code {
   .demo-grid,
   .calibration-grid,
   .results-grid,
-  .command-grid,
   .portfolio-focus {
     grid-template-columns: 1fr;
   }
