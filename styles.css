@@ -464,11 +464,11 @@ select {
 
 .example-steps pre {
   min-height: 0;
-  margin-top: 12px;
+  margin-top: 9px;
   border-radius: 7px;
-  padding: 12px;
+  padding: 8px 12px 10px;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.38;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -671,6 +671,34 @@ select {
   color: #125d43;
   padding: 8px 10px;
   font-size: 13px;
+}
+
+.feature-interpretation {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.feature-interpretation div {
+  border: 1px solid #d5e2eb;
+  border-radius: 8px;
+  background: #f8fafb;
+  padding: 12px;
+}
+
+.feature-interpretation b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.feature-interpretation p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .dataset-panel {
@@ -933,7 +961,8 @@ code {
   .bar-line,
   .chart-item,
   .feature-detail,
-  .feature-stat-grid {
+  .feature-stat-grid,
+  .feature-interpretation {
     grid-template-columns: 1fr;
   }
 
