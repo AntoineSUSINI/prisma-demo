@@ -115,6 +115,69 @@ proxy_IM = max(Q99(loss), Q99.9(loss), 0.1% × notional, add-ons)`,
   },
 };
 
+const featureInterpretations = {
+  moneyness: [
+    ["Healthy center", "Median is almost exactly at-the-money, so the model sees many economically central option rows."],
+    ["Useful range", "P10/P90 covers moderately OTM and ITM contracts without being dominated by extreme strikes."],
+    ["Model role", "This is one of the key option-risk features because PRISMA corrections differ strongly by strike location."],
+  ],
+  ttm: [
+    ["Good coverage", "The 15-184 day range matches the short and medium maturities used in the validation portfolios."],
+    ["No long-tail issue", "There are no very long expiries in this retained dataset, so the model is not asked to extrapolate far on maturity."],
+    ["Model role", "The sqrt and log transforms let the model distinguish near-expiry convexity from slower maturity effects."],
+  ],
+  vol: [
+    ["Mostly realistic", "The median around 23% is a normal equity/index option volatility level for this universe."],
+    ["Watch the tail", "The 92.5% maximum is a stress regime observation; useful information, but not a typical row."],
+    ["Model role", "Volatility is both a pricing input and a regime signal, so it helps explain when the proxy under- or over-charges."],
+  ],
+  spot: [
+    ["Mixed scales", "The wide range is expected because the dataset mixes single stocks and equity indices."],
+    ["Handled in features", "Log spot and notional features reduce the risk that large index levels mechanically dominate stocks."],
+    ["Interpretation", "Spot itself is not a risk measure; it mainly anchors moneyness, forward pricing and economic scale."],
+  ],
+  instrument: [
+    ["Imbalanced sample", "Options dominate the dataset; futures are present but much less frequent."],
+    ["Still usable", "Dedicated call, put and future flags make the instrument type explicit to the model."],
+    ["Watch point", "Future-specific conclusions are based on fewer rows than option conclusions."],
+  ],
+  asset: [
+    ["Stock-heavy", "Single stocks are the majority, but index derivatives still have substantial coverage."],
+    ["Missing family", "The retained LSEG10 setup does not materially cover fixed-income rows, so FI extrapolation should be avoided."],
+    ["Model role", "Asset flags help the model learn that stock and index margins have different PRISMA biases."],
+  ],
+  depth: [
+    ["Expected zeros", "The median is zero because many options are out-of-the-money or near-the-money on the intrinsic side."],
+    ["Wing coverage", "The P90 and max show that the model still sees meaningful ITM/OTM depth, not only ATM options."],
+    ["Model role", "Depth helps separate cheap wings from options with real intrinsic exposure."],
+  ],
+  regime: [
+    ["Well centered", "Median regime is 1.0, meaning typical rows sit close to their product's usual volatility."],
+    ["Stress information", "High-regime rows are present, so the model has examples of elevated-volatility periods."],
+    ["Guardrail cue", "Very high regime values are useful, but they are also where predictions need more caution."],
+  ],
+  intrinsic: [
+    ["Expected distribution", "Half the option rows have zero intrinsic value, which is normal for listed option chains."],
+    ["Useful tail", "The 90th percentile around 15% gives the model enough ITM examples to learn non-linear effects."],
+    ["Model role", "Intrinsic value helps identify options where price risk is more delta-like than pure optionality."],
+  ],
+  product: [
+    ["Good breadth", "Seventeen products give the model repeated product-level patterns rather than one generic universe."],
+    ["Concentration", "The top products have many rows, which improves stability but also means they influence the fit strongly."],
+    ["Inference rule", "Unknown products map to zero, so the strongest interpretation is for products seen in training."],
+  ],
+  notional: [
+    ["Wide economic scale", "The range is large because multipliers and spots differ strongly across stocks and indices."],
+    ["Handled with logs", "Log notional makes the scale usable without letting the largest contracts dominate linearly."],
+    ["Model role", "Notional helps the model learn when PRISMA behaves differently for small versus large economic exposure."],
+  ],
+  target: [
+    ["Proxy bias signal", "The median ratio below 1 says the raw proxy is often above the API margin on unit rows."],
+    ["Tail caution", "Extreme min/max values exist, so the model needs guardrails when turning predictions into factors."],
+    ["What ML predicts", "The model predicts this log-ratio; exponentiating it gives the multiplicative correction factor."],
+  ],
+};
+
 const els = {
   count: document.getElementById("summary-count"),
   select: document.getElementById("portfolio-select"),
@@ -284,6 +347,12 @@ function renderFeatureDetail(featureId) {
   `).join("");
 
   const notes = (family.notes || []).map((note) => `<span>${note}</span>`).join("");
+  const interpretation = (featureInterpretations[family.id] || []).map(([title, body]) => `
+    <div>
+      <b>${title}</b>
+      <p>${body}</p>
+    </div>
+  `).join("");
 
   els.featureDetail.innerHTML = `
     <div>
@@ -291,6 +360,7 @@ function renderFeatureDetail(featureId) {
       <p>${family.description}</p>
     </div>
     <div class="feature-stat-grid">${stats}</div>
+    ${interpretation ? `<div class="feature-interpretation">${interpretation}</div>` : ""}
     ${notes ? `<div class="feature-notes">${notes}</div>` : ""}
   `;
 }
