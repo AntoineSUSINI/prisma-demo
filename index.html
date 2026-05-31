@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Demo PRISMA Hybrid Margin</title>
-    <link rel="stylesheet" href="./styles.css?v=20260531-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260531-3" />
   </head>
   <body>
     <header class="topbar">
@@ -18,7 +18,6 @@
         <a href="#dataset">Dataset</a>
         <a href="#demo">Demo</a>
         <a href="#results">Results</a>
-        <a href="#commands">Commands</a>
       </nav>
     </header>
 
@@ -369,27 +368,10 @@ final_hybrid = portfolio_proxy × robust_portfolio_factor</code></pre>
         </div>
       </section>
 
-      <section id="commands" class="panel">
-        <p class="eyebrow">Demo mode</p>
-        <h2>Useful commands</h2>
-        <div class="command-grid">
-          <div>
-            <h3>Replay without live API calls</h3>
-            <pre><code>MPLCONFIGDIR=/private/tmp/mpl-cache conda run -n these python -B validation_multidate_suite.py \
-  --skip-api \
-  --model archive/non_runtime_2026_05_29/experiments/lseg_complete10/calibration_model.pkl \
-  --portfolios-input archive/non_runtime_2026_05_29/experiments/lseg_complete10/portfolios_without_novn_muv2.json</code></pre>
-          </div>
-          <div>
-            <h3>Open the browser demo</h3>
-            <pre><code>open "/Users/antoinesusini/Desktop/Thèse/code/Prisma/demo/index.html"</code></pre>
-          </div>
-        </div>
-      </section>
     </main>
 
-    <script src="./demo_data.js?v=20260531-2"></script>
-    <script src="./demo_dataset.js?v=20260531-2"></script>
-    <script src="./app.js?v=20260531-2"></script>
+    <script src="./demo_data.js?v=20260531-3"></script>
+    <script src="./demo_dataset.js?v=20260531-3"></script>
+    <script src="./app.js?v=20260531-3"></script>
   </body>
 </html>
