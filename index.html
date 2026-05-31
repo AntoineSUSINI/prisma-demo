@@ -110,7 +110,7 @@ proxy_IM = max(Q99(loss), Q99.9(loss), 0.1% × notional, add-ons)</code></pre>
               </p>
               <pre><code>target = log(API_margin / local_proxy_margin)
 predicted_factor = exp(model(features))
-hybrid_standalone = proxy_margin × guarded(predicted_factor)</code></pre>
+hybrid_standalone = proxy_margin × predicted_factor</code></pre>
               <p id="worked-ml-applied" class="applied">
                 P029 factor: <strong>1.2995</strong>, so
                 <strong>5,617.76 € × 1.2995 = 7,300.20 €</strong>.
